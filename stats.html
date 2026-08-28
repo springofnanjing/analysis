@@ -62,15 +62,15 @@
     .troop-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } 
     .troop-default { background: #e2e8f0; color: #475569; }
 
-    /* ★ 직관적인 전법/순서 뱃지 스타일 */
-    .status-badge { display: block; font-size: 9.5px; padding: 3px 2px; border-radius: 4px; font-weight: 600; text-align: center; margin-top: 4px; letter-spacing: -0.4px; }
+    /* ★ 3가지 깔끔한 상태별 뱃지 스타일 */
+    .status-badge { display: block; font-size: 10px; padding: 3px 2px; border-radius: 4px; font-weight: 600; text-align: center; margin-top: 4px; letter-spacing: -0.3px; }
     
-    /* 1. 전법[일치] 순서[일치] (초록) */
-    .status-both-match { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-    /* 2. 전법[일치] 순서[불일치] (오렌지) */
-    .status-partial-match { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-    /* 3. 전법[불일치] 순서[불일치] (그레이) */
-    .status-none-match { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+    /* 1. 정석·일치 (초록) */
+    .status-match { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    /* 2. 정석·불일치 (오렌지) */
+    .status-mismatch { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    /* 3. 변칙 (그레이) */
+    .status-variant { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
     
     /* 세부 전법 영역 */
     .skill-section { display: none; margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 6px; }
@@ -249,7 +249,7 @@
     const isTroopMatch = (officerTroop === expectedTroop);
     const troopClass = isTroopMatch ? 'troop-match' : 'troop-default';
 
-    // ★ 전법/순서 매칭 결과 텍스트 및 클래스 가져오기
+    // ★ 정석·일치 / 정석·불일치 / 변칙 판독 결과 가져오기
     const statusInfo = getMatchStatus(officerName, t1, t2, t3);
 
     return `
@@ -272,10 +272,10 @@
     `;
   }
 
-  // ★ 전법 & 순서 명확한 텍스트 리턴 함수
+  // ★ 정석 조합 여부에 따른 분기 로직
   function getMatchStatus(officerName, t1, t2, t3) {
     if (!officerName) {
-      return { text: "전법[불일치] 순서[불일치]", cssClass: "status-none-match" };
+      return { text: "변칙", cssClass: "status-variant" };
     }
     
     const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
@@ -295,23 +295,26 @@
       targetSkill2 = "허점공략";
       targetSkill3 = "강철의의지";
     } else {
-      return { text: "전법[불일치] 순서[불일치]", cssClass: "status-none-match" };
+      return { text: "변칙", cssClass: "status-variant" };
     }
 
-    // 전법 포함 여부 (순서 무관 두 전법을 모두 들었는가)
+    // 1단계: 정석 전법 2개를 모두 들었는지 확인 (순서 무관)
     const hasSkill2 = (cT2.includes(targetSkill2) || cT3.includes(targetSkill2));
     const hasSkill3 = (cT2.includes(targetSkill3) || cT3.includes(targetSkill3));
-    const isSkillMatch = hasSkill2 && hasSkill3;
+    const isStandardSkillSet = hasSkill2 && hasSkill3;
 
-    // 순서 정확성 (2, 3번 위치에 제자리에 잘 들어왔는가)
+    // 정석 조합이 아니면 고민할 것도 없이 '변칙'
+    if (!isStandardSkillSet) {
+      return { text: "변칙", cssClass: "status-variant" };
+    }
+
+    // 2단계: 정석 조합이 맞다면 순서까지 정확한지 확인
     const isOrderMatch = cT2.includes(targetSkill2) && cT3.includes(targetSkill3);
 
-    if (isSkillMatch && isOrderMatch) {
-      return { text: "전법[일치] 순서[일치]", cssClass: "status-both-match" };     // 초록
-    } else if (isSkillMatch && !isOrderMatch) {
-      return { text: "전법[일치] 순서[불일치]", cssClass: "status-partial-match" }; // 오렌지
+    if (isOrderMatch) {
+      return { text: "정석·일치", cssClass: "status-match" };       // 초록색 (전법도 맞고 순서도 맞음)
     } else {
-      return { text: "전법[불일치] 순서[불일치]", cssClass: "status-none-match" };   // 회색
+      return { text: "정석·불일치", cssClass: "status-mismatch" }; // 오렌지색 (전법은 맞는데 순서가 바뀜)
     }
   }
 
@@ -365,7 +368,7 @@
     document.getElementById('statsSummaryBar').style.display = "flex";
   }
 
-  function filterAndRender() {
+  function filterAndReader() {
     renderData(rawData);
   }
 </script>
