@@ -15,14 +15,15 @@
     input[type="text"]:focus { border-color: #007bff; }
     button { padding: 7px 14px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; }
     
-    /* 통계 요약 패널 추가 */
+    /* 통계 요약 바 영역 */
     .stats-summary-bar { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; color: #495057; display: flex; flex-direction: column; gap: 4px; }
     .stats-row { display: flex; justify-content: space-between; align-items: center; }
     .stats-title { font-weight: bold; color: #343a40; }
     .stats-content { color: #007bff; font-weight: bold; }
 
-    /* 부대 카드 컴팩트 뷰 */
+    /* 부대 카드 기본 및 정석 강조 테두리 */
     .record-card { background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    .standard-border { border: 2px solid #ff4d4d; background-color: #fffafb; } /* 정석 3인방 카드 위협적 강조 */
     
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #f1f3f5; padding-bottom: 4px; }
     
@@ -31,7 +32,11 @@
     .troop-summary-tag { background: #343a40; color: #fff; font-size: 11px; font-weight: bold; padding: 2px 5px; border-radius: 4px; letter-spacing: 0.5px; }
 
     .header-right { display: flex; align-items: center; gap: 6px; }
-    .formation-badge { background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    
+    /* 진형 뱃지 일치/불일치 스타일 */
+    .formation-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .formation-match { background: #ff9800; color: #fff; } /* 안형진 일치 시 포인트 컬러 */
+    .formation-default { background: #e9ecef; color: #495057; }
     
     /* 펼치기/접기 버튼 스타일 */
     .toggle-btn { background: #f1f3f5; color: #495057; border: 1px solid #ced4da; padding: 2px 6px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
@@ -42,9 +47,18 @@
     @media (max-width: 600px) { .officer-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; } }
 
     .officer-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 5px 6px; }
-    .officer-top { display: flex; justify-content: space-between; align-items: center; }
+    .officer-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .officer-name { font-weight: bold; font-size: 12px; color: #212529; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .troop-badge { background: #e2e8f0; color: #4a5568; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
+    
+    /* 병종 뱃지 일치/불일치 스타일 */
+    .troop-badge { font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
+    .troop-match { background: #ff9800; color: #fff; } /* 문추 석궁병 / 진궁화타 장궁병 일치 시 */
+    .troop-default { background: #e2e8f0; color: #4a5568; }
+
+    /* 전법 및 순서 일치 서브 뱃지 스타일 */
+    .skill-status-badge { display: block; font-size: 9px; padding: 2px 4px; border-radius: 3px; font-weight: bold; text-align: center; margin-top: 4px; }
+    .skill-match { background: #4caf50; color: #fff; }   /* 전법·순서 완벽 일치 */
+    .skill-mismatch { background: #9e9e9e; color: #fff; } /* 순서 혹은 전법 불일치 (커스텀) */
     
     /* 세부 전법 영역 */
     .skill-section { display: none; margin-top: 5px; border-top: 1px dashed #dee2e6; padding-top: 5px; }
@@ -117,7 +131,7 @@
   }
 
   function renderData(dataList) {
-    const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+    const keyword = document.getElementById('searchInput'].value.trim().toLowerCase();
     const resultArea = document.getElementById('resultArea');
 
     // 1. 유저별 최신 기록 추출
@@ -128,7 +142,7 @@
     });
     const latestList = Object.values(latestMap);
 
-    // 2. 통계 정보 계산 (최신 덱 전체 기준)
+    // 2. 통계 정보 계산
     calculateStats(latestList);
 
     // 3. 검색어 필터링
@@ -164,70 +178,86 @@
       const troopSummary = getShortTroop(r.h1_troop) + getShortTroop(r.h2_troop) + getShortTroop(r.h3_troop);
       const cardId = `skills-${idx}`;
 
+      // 정석 3인방 조합 체크 (문추, 진궁, 화타)
+      const heroes = [r.h1_name, r.h2_name, r.h3_name];
+      const isStandardHeroSet = heroes.includes('문추') && heroes.includes('진궁') && heroes.includes('화타');
+      const cardBorderClass = isStandardHeroSet ? 'standard-border' : '';
+
+      // 진형 체크 (안형진 여부)
+      const isAnHyeongJin = (r.formation === '안형진');
+      const formationClass = isAnHyeongJin ? 'formation-match' : 'formation-default';
+
+      // 장수별 병종 및 전법/순서 상태 렌더링 헬퍼 함수
+      function renderOfficerBox(officerName, officerTroop, t1, t2, t3, subCardId) {
+        if (!officerName) {
+          return `
+            <div class="officer-box">
+              <div class="officer-top"><span class="officer-name" style="color:#adb5bd;">빈 슬롯</span></div>
+            </div>
+          `;
+        }
+
+        // 정석 병종 매칭 판정 (문추=석궁병, 진궁/화타=장궁병)
+        let expectedTroop = "";
+        if (officerName === '문추') expectedTroop = '석궁병';
+        if (officerName === '진궁' || officerName === '화타') expectedTroop = '장궁병';
+
+        const isTroopMatch = (officerTroop === expectedTroop);
+        const troopClass = isTroopMatch ? 'troop-match' : 'troop-default';
+
+        // [전법 및 순서 일치 여부 판단 로직]
+        // 추후 상세 정석 전법 데이터와 비교하는 코드로 고도화 가능. 현재는 기본 판독 구조 적용
+        const isSkillAndOrderMatch = checkOfficerSkillMatch(officerName, t1, t2, t3);
+        const skillBadgeClass = isSkillAndOrderMatch ? 'skill-match' : 'skill-mismatch';
+        const skillBadgeText = isSkillAndOrderMatch ? '전법·순서 [일치]' : '전법·순서 [불일치]';
+
+        return `
+          <div class="officer-box">
+            <div class="officer-top">
+              <span class="officer-name">${officerName}</span>
+              <span class="troop-badge ${troopClass}">${officerTroop || '-'}</span>
+            </div>
+            <span class="skill-status-badge ${skillBadgeClass}">${skillBadgeText}</span>
+            <div id="${subCardId}" class="skill-section">
+              <ul class="skill-list">
+                <li>${t1 ? t1 : '<span class="empty-skill">-</span>'}</li>
+                <li>${t2 ? t2 : '<span class="empty-skill">-</span>'}</li>
+                <li>${t3 ? t3 : '<span class="empty-skill">-</span>'}</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      }
+
       html += `
-        <div class="record-card">
+        <div class="record-card ${cardBorderClass}">
           <div class="card-header">
             <div class="header-left">
               <span class="enemy-name">👤 ${r.enemy_name}</span>
               <span class="troop-summary-tag">[${troopSummary}]</span>
             </div>
             <div class="header-right">
-              <span class="formation-badge">🛡️ ${r.formation}</span>
+              <span class="formation-badge ${formationClass}">🛡️ ${r.formation || '미정'}</span>
               <button class="toggle-btn" onclick="toggleSkills('${cardId}', this)">▼ 전법</button>
             </div>
           </div>
           
           <div class="officer-grid">
-            <!-- 장수 1 -->
-            <div class="officer-box">
-              <div class="officer-top">
-                <span class="officer-name">${r.h1_name || '미정'}</span>
-                <span class="troop-badge">${r.h1_troop || '-'}</span>
-              </div>
-              <div id="${cardId}-1" class="skill-section">
-                <ul class="skill-list">
-                  <li>${r.h1_t1 ? r.h1_t1 : '<span class="empty-skill">-</span>'}</li>
-                  <li>${r.h1_t2 ? r.h1_t2 : '<span class="empty-skill">-</span>'}</li>
-                  <li>${r.h1_t3 ? r.h1_t3 : '<span class="empty-skill">-</span>'}</li>
-                </ul>
-              </div>
-            </div>
-
-            <!-- 장수 2 -->
-            <div class="officer-box">
-              <div class="officer-top">
-                <span class="officer-name">${r.h2_name || '미정'}</span>
-                <span class="troop-badge">${r.h2_troop || '-'}</span>
-              </div>
-              <div id="${cardId}-2" class="skill-section">
-                <ul class="skill-list">
-                  <li>${r.h2_t1 ? r.h2_t1 : '<span class="empty-skill">-</span>'}</li>
-                  <li>${r.h2_t2 ? r.h2_t2 : '<span class="empty-skill">-</span>'}</li>
-                  <li>${r.h2_t3 ? r.h2_t3 : '<span class="empty-skill">-</span>'}</li>
-                </ul>
-              </div>
-            </div>
-
-            <!-- 장수 3 -->
-            <div class="officer-box">
-              <div class="officer-top">
-                <span class="officer-name">${r.h3_name || '미정'}</span>
-                <span class="troop-badge">${r.h3_troop || '-'}</span>
-              </div>
-              <div id="${cardId}-3" class="skill-section">
-                <ul class="skill-list">
-                  <li>${r.h3_t1 ? r.h3_t1 : '<span class="empty-skill">-</span>'}</li>
-                  <li>${r.h3_t2 ? r.h3_t2 : '<span class="empty-skill">-</span>'}</li>
-                  <li>${r.h3_t3 ? r.h3_t3 : '<span class="empty-skill">-</span>'}</li>
-                </ul>
-              </div>
-            </div>
+            ${renderOfficerBox(r.h1_name, r.h1_troop, r.h1_t1, r.h1_t2, r.h1_t3, cardId + "-1")}
+            ${renderOfficerBox(r.h2_name, r.h2_troop, r.h2_t1, r.h2_t2, r.h2_t3, cardId + "-2")}
+            ${renderOfficerBox(r.h3_name, r.h3_troop, r.h3_t1, r.h3_t2, r.h3_t3, cardId + "-3")}
           </div>
         </div>
       `;
     });
 
     resultArea.innerHTML = html;
+  }
+
+  // 장수별 전법/순서 정석 일치 여부 판독 함수 (필요에 따라 세부 전법 대조식 추가 가능)
+  function checkOfficerSkillMatch(officerName, t1, t2, t3) {
+    // 임시 기본값: 추후 정석 전법 목록과 비교하여 true/false 반환하도록 확장
+    return false; 
   }
 
   // 통계 계산 함수
@@ -237,11 +267,9 @@
     let munchuTotal = 0;
 
     list.forEach(r => {
-      // 1. 병종 조합 카운트
       const tSum = getShortTroop(r.h1_troop) + getShortTroop(r.h2_troop) + getShortTroop(r.h3_troop);
       troopCounts[tSum] = (troopCounts[tSum] || 0) + 1;
 
-      // 2. 문추 포함 여부 확인 및 동행 장수 카운트
       const officers = [
         { name: r.h1_name, troop: r.h1_troop },
         { name: r.h2_name, troop: r.h2_troop },
@@ -259,23 +287,20 @@
       }
     });
 
-    // 병종 조합 랭킹 정렬 (상위 2개)
     const sortedTroops = Object.entries(troopCounts).sort((a, b) => b[1] - a[1]);
     let troopText = sortedTroops.slice(0, 2).map(([combo, cnt]) => `[${combo}] ${cnt}명`).join(" / ");
     if (!troopText) troopText = "데이터 없음";
 
-    // 문추 파트너 정렬 (상위 2명)
     const sortedPartners = Object.entries(munchuPartners).sort((a, b) => b[1] - a[1]);
     let munchuText = sortedPartners.slice(0, 2).map(([name, cnt]) => `${name} (${cnt}회)`).join(", ");
     if (munchuTotal === 0) {
       munchuText = "등록된 덱 없음";
     } else if (!munchuText) {
-      munchuText = `총 ${munchuTotal개}덱 (단독/기타)`;
+      munchuText = `총 ${munchuTotal}덱 (단독/기타)`;
     } else {
       munchuText = `총 ${munchuTotal}덱 / 자주 동행: ${munchuText}`;
     }
 
-    // 화면에 반영
     document.getElementById('topTroopRank').innerText = troopText;
     document.getElementById('munchuStats').innerText = munchuText;
     document.getElementById('statsSummaryBar').style.display = "flex";
