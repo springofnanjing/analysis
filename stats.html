@@ -37,9 +37,15 @@
     
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f8fafc; padding-bottom: 6px; }
     
-    .header-left { display: flex; align-items: center; gap: 6px; }
+    .header-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .enemy-name { font-size: 15px; font-weight: 700; color: #0ea5e9; }
     .troop-summary-tag { background: #334155; color: #fff; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
+    
+    /* ★ 덱 완성도 점수 뱃지 스타일 */
+    .score-badge { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; }
+    .score-max { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }   /* 10점 만점 */
+    .score-high { background: #fef3c7; color: #b45309; border-color: #fde68a; }  /* 7~9점 */
+    .score-low { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }   /* 6점 이하 */
 
     .header-right { display: flex; align-items: center; gap: 6px; }
     
@@ -62,14 +68,10 @@
     .troop-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } 
     .troop-default { background: #e2e8f0; color: #475569; }
 
-    /* ★ 3가지 깔끔한 상태별 뱃지 스타일 */
+    /* 상태별 뱃지 스타일 */
     .status-badge { display: block; font-size: 10px; padding: 3px 2px; border-radius: 4px; font-weight: 600; text-align: center; margin-top: 4px; letter-spacing: -0.3px; }
-    
-    /* 1. 정석·일치 (초록) */
     .status-match { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-    /* 2. 정석·불일치 (오렌지) */
     .status-mismatch { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-    /* 3. 변칙 (그레이) */
     .status-variant { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
     
     /* 세부 전법 영역 */
@@ -188,6 +190,12 @@
       const isAnHyeongJin = (r.formation === '안형진');
       const formationClass = isAnHyeongJin ? 'formation-match' : 'formation-default';
 
+      // ★ 덱 완성도 점수 계산 로직 적용
+      const totalScore = calculateDeckScore(r);
+      let scoreBadgeClass = 'score-low';
+      if (totalScore === 10) scoreBadgeClass = 'score-max';
+      else if (totalScore >= 7) scoreBadgeClass = 'score-high';
+
       const cardDiv = document.createElement('div');
       cardDiv.className = `record-card ${cardBorderClass}`;
 
@@ -196,6 +204,7 @@
           <div class="header-left">
             <span class="enemy-name">👤 ${escapeHtml(r.enemy_name)}</span>
             <span class="troop-summary-tag">[${troopSummary}]</span>
+            <span class="score-badge ${scoreBadgeClass}">🔥 ${totalScore}/10점</span>
           </div>
           <div class="header-right">
             <span class="formation-badge ${formationClass}">🛡️ ${escapeHtml(r.formation || '미정')}</span>
@@ -233,6 +242,78 @@
     });
   }
 
+  // ★ 10점 만점 덱 완성도 계산 함수
+  function calculateDeckScore(r) {
+    let score = 0;
+
+    // 1. 진형 일치 (+1)
+    if (r.formation === '안형진') {
+      score += 1;
+    }
+
+    // 장수 데이터 배열 처리
+    const officers = [
+      { name: r.h1_name, troop: r.h1_troop, t1: r.h1_t1, t2: r.h1_t2, t3: r.h1_t3 },
+      { name: r.h2_name, troop: r.h2_troop, t1: r.h2_t1, t2: r.h2_t2, t3: r.h2_t3 },
+      { name: r.h3_name, troop: r.h3_troop, t1: r.h3_t1, t2: r.h3_t2, t3: r.h3_t3 }
+    ];
+
+    officers.forEach(o => {
+      if (!o.name) return;
+
+      // 2. 병종 일치 (무장당 +1, 최대 +3)
+      let expectedTroop = "";
+      if (o.name === '문추') expectedTroop = '석궁병';
+      if (o.name === '진궁' || o.name === '화타') expectedTroop = '장궁병';
+      
+      if (o.troop === expectedTroop) {
+        score += 1;
+      }
+
+      // 3 & 4. 정석·일치(+2) 또는 정석·불일치(+1) 판독
+      const matchStatus = getMatchStatusData(o.name, o.t1, o.t2, o.t3);
+      if (matchStatus === 'match') {
+        score += 2; // 정석·일치
+      } else if (matchStatus === 'mismatch') {
+        score += 1; // 정석·불일치
+      }
+    });
+
+    return score;
+  }
+
+  // 내부 판독용 보조 함수
+  function getMatchStatusData(officerName, t1, t2, t3) {
+    if (!officerName) return 'variant';
+    const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
+    const cT2 = clean(t2);
+    const cT3 = clean(t3);
+
+    let targetSkill2 = "";
+    let targetSkill3 = "";
+
+    if (officerName === '문추') {
+      targetSkill2 = "철기병돌격";
+      targetSkill3 = "신속전개";
+    } else if (officerName === '화타') {
+      targetSkill2 = "결사의다짐";
+      targetSkill3 = "정의의희생";
+    } else if (officerName === '진궁') {
+      targetSkill2 = "허점공략";
+      targetSkill3 = "강철의의지";
+    } else {
+      return 'variant';
+    }
+
+    const hasSkill2 = (cT2.includes(targetSkill2) || cT3.includes(targetSkill2));
+    const hasSkill3 = (cT2.includes(targetSkill3) || cT3.includes(targetSkill3));
+    
+    if (!hasSkill2 || !hasSkill3) return 'variant'; // 변칙
+
+    const isOrderMatch = cT2.includes(targetSkill2) && cT3.includes(targetSkill3);
+    return isOrderMatch ? 'match' : 'mismatch'; // 정석·일치 vs 정석·불일치
+  }
+
   function createOfficerBox(officerName, officerTroop, t1, t2, t3, subCardId) {
     if (!officerName) {
       return `
@@ -249,7 +330,6 @@
     const isTroopMatch = (officerTroop === expectedTroop);
     const troopClass = isTroopMatch ? 'troop-match' : 'troop-default';
 
-    // ★ 정석·일치 / 정석·불일치 / 변칙 판독 결과 가져오기
     const statusInfo = getMatchStatus(officerName, t1, t2, t3);
 
     return `
@@ -272,49 +352,14 @@
     `;
   }
 
-  // ★ 정석 조합 여부에 따른 분기 로직
   function getMatchStatus(officerName, t1, t2, t3) {
-    if (!officerName) {
-      return { text: "변칙", cssClass: "status-variant" };
-    }
-    
-    const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
-    const cT2 = clean(t2);
-    const cT3 = clean(t3);
-
-    let targetSkill2 = "";
-    let targetSkill3 = "";
-
-    if (officerName === '문추') {
-      targetSkill2 = "철기병돌격";
-      targetSkill3 = "신속전개";
-    } else if (officerName === '화타') {
-      targetSkill2 = "결사의다짐";
-      targetSkill3 = "정의의희생";
-    } else if (officerName === '진궁') {
-      targetSkill2 = "허점공략";
-      targetSkill3 = "강철의의지";
+    const statusType = getMatchStatusData(officerName, t1, t2, t3);
+    if (statusType === 'match') {
+      return { text: "정석·일치", cssClass: "status-match" };
+    } else if (statusType === 'mismatch') {
+      return { text: "정석·불일치", cssClass: "status-mismatch" };
     } else {
       return { text: "변칙", cssClass: "status-variant" };
-    }
-
-    // 1단계: 정석 전법 2개를 모두 들었는지 확인 (순서 무관)
-    const hasSkill2 = (cT2.includes(targetSkill2) || cT3.includes(targetSkill2));
-    const hasSkill3 = (cT2.includes(targetSkill3) || cT3.includes(targetSkill3));
-    const isStandardSkillSet = hasSkill2 && hasSkill3;
-
-    // 정석 조합이 아니면 고민할 것도 없이 '변칙'
-    if (!isStandardSkillSet) {
-      return { text: "변칙", cssClass: "status-variant" };
-    }
-
-    // 2단계: 정석 조합이 맞다면 순서까지 정확한지 확인
-    const isOrderMatch = cT2.includes(targetSkill2) && cT3.includes(targetSkill3);
-
-    if (isOrderMatch) {
-      return { text: "정석·일치", cssClass: "status-match" };       // 초록색 (전법도 맞고 순서도 맞음)
-    } else {
-      return { text: "정석·불일치", cssClass: "status-mismatch" }; // 오렌지색 (전법은 맞는데 순서가 바뀜)
     }
   }
 
