@@ -5,74 +5,88 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>삼국지: 천하결전 - 문추 저격덱 탐지기</title>
   <style>
-    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f4f6f9; margin: 0; padding: 6px; color: #333; }
-    .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    h2 { margin: 0 0 8px 0; color: #2c3e50; border-bottom: 2px solid #eaeaea; padding-bottom: 6px; font-size: 16px; }
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-main: #1e293b;
+      --text-sub: #64748b;
+      --primary: #3b82f6;
+      --accent-red: #ef4444;
+      --accent-orange: #f59e0b;
+      --badge-match: #10b981;    /* 고급스러운 에메랄드 그린 */
+      --badge-mismatch: #94a3b8; /* 차분한 슬레이트 그레이 */
+    }
+
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: var(--bg-color); margin: 0; padding: 8px; color: var(--text-main); }
+    .container { max-width: 800px; margin: 0 auto; background: var(--card-bg); padding: 12px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+    h2 { margin: 0 0 10px 0; color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; font-size: 16px; font-weight: 700; }
     
     /* 검색창 영역 */
-    .search-box { margin-bottom: 8px; display: flex; gap: 6px; }
-    input[type="text"] { flex: 1; padding: 7px 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; outline: none; }
-    input[type="text"]:focus { border-color: #007bff; }
-    button { padding: 7px 14px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; }
+    .search-box { margin-bottom: 10px; display: flex; gap: 6px; }
+    input[type="text"] { flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; outline: none; background: #fff; transition: all 0.2s; }
+    input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    button { padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+    button:hover { background: #2563eb; }
     
-    /* 통계 요약 바 영역 */
-    .stats-summary-bar { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; color: #495057; display: flex; flex-direction: column; gap: 4px; }
+    /* 통계 요약 바 영역 (고급스러운 카드 형태) */
+    .stats-summary-bar { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px; color: var(--text-sub); display: flex; flex-direction: column; gap: 6px; }
     .stats-row { display: flex; justify-content: space-between; align-items: center; }
-    .stats-title { font-weight: bold; color: #343a40; }
-    .stats-content { color: #007bff; font-weight: bold; }
+    .stats-title { font-weight: 600; color: #334155; }
+    .stats-content { color: #2563eb; font-weight: 600; }
 
     /* 부대 카드 기본 및 정석 강조 테두리 */
-    .record-card { background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
-    .standard-border { border: 2px solid #ff4d4d; background-color: #fffafb; } /* 정석 3인방 카드 위협적 강조 */
+    .record-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: transform 0.1s; }
+    .standard-border { border: 2px solid #fda4af; background-color: #fff1f2; } /* 은은하고 고급스러운 위험 감지 핑크/레드 톤 */
     
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid #f1f3f5; padding-bottom: 4px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f8fafc; padding-bottom: 6px; }
     
     .header-left { display: flex; align-items: center; gap: 6px; }
-    .enemy-name { font-size: 15px; font-weight: bold; color: #1da1f2; }
-    .troop-summary-tag { background: #343a40; color: #fff; font-size: 11px; font-weight: bold; padding: 2px 5px; border-radius: 4px; letter-spacing: 0.5px; }
+    .enemy-name { font-size: 15px; font-weight: 700; color: #0ea5e9; }
+    .troop-summary-tag { background: #334155; color: #fff; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
 
     .header-right { display: flex; align-items: center; gap: 6px; }
     
-    /* 진형 뱃지 일치/불일치 스타일 */
-    .formation-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .formation-match { background: #ff9800; color: #fff; } /* 안형진 일치 시 포인트 컬러 */
-    .formation-default { background: #e9ecef; color: #495057; }
+    /* 진형 뱃지 스타일 */
+    .formation-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .formation-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } /* 세련된 오렌지 파스텔 */
+    .formation-default { background: #f1f5f9; color: var(--text-sub); }
     
     /* 펼치기/접기 버튼 스타일 */
-    .toggle-btn { background: #f1f3f5; color: #495057; border: 1px solid #ced4da; padding: 2px 6px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
-    .toggle-btn:hover { background: #e2e8f0; }
+    .toggle-btn { background: #f8fafc; color: var(--text-sub); border: 1px solid var(--border-color); padding: 3px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; }
+    .toggle-btn:hover { background: #f1f5f9; }
 
     /* 장수 3명 Grid */
-    .officer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .officer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     @media (max-width: 600px) { .officer-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; } }
 
-    .officer-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 5px 6px; }
+    .officer-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; }
     .officer-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .officer-name { font-weight: bold; font-size: 12px; color: #212529; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .officer-name { font-weight: 700; font-size: 12px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    /* 병종 뱃지 일치/불일치 스타일 */
-    .troop-badge { font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-    .troop-match { background: #ff9800; color: #fff; } /* 문추 석궁병 / 진궁화타 장궁병 일치 시 */
-    .troop-default { background: #e2e8f0; color: #4a5568; }
+    /* 병종 뱃지 스타일 */
+    .troop-badge { font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: 600; }
+    .troop-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } 
+    .troop-default { background: #e2e8f0; color: #475569; }
 
-    /* 전법 및 순서 일치 서브 뱃지 스타일 */
-    .skill-status-badge { display: block; font-size: 9px; padding: 2px 4px; border-radius: 3px; font-weight: bold; text-align: center; margin-top: 4px; }
-    .skill-match { background: #4caf50; color: #fff; }   /* 전법·순서 완벽 일치 */
-    .skill-mismatch { background: #9e9e9e; color: #fff; } /* 순서 혹은 전법 불일치 */
+    /* 전법 및 순서 일치 서브 뱃지 스타일 (고급스럽게 수정) */
+    .skill-status-badge { display: block; font-size: 9px; padding: 3px 4px; border-radius: 4px; font-weight: 600; text-align: center; margin-top: 4px; letter-spacing: -0.2px; }
+    .skill-match { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }   /* 고급 에메랄드 그린 톤 */
+    .skill-mismatch { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; } /* 차분한 그레이 톤 */
     
     /* 세부 전법 영역 */
-    .skill-section { display: none; margin-top: 5px; border-top: 1px dashed #dee2e6; padding-top: 5px; }
-    .skill-list { font-size: 11px; color: #495057; margin: 0; padding-left: 12px; line-height: 1.3; }
-    .skill-list li { margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .empty-skill { color: #adb5bd; }
+    .skill-section { display: none; margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 6px; }
+    .skill-list { font-size: 11px; color: #475569; margin: 0; padding-left: 12px; line-height: 1.4; }
+    .skill-list li { margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .empty-skill { color: #cbd5e1; }
 
-    .loading, .no-data { text-align: center; color: #7f8c8d; padding: 20px; font-size: 14px; }
+    .loading, .no-data { text-align: center; color: var(--text-sub); padding: 24px; font-size: 14px; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>🔍 문추 저격덱 최신 부대 정찰</h2>
+  <h2>🔍 천조국 문추 저격덱 정찰</h2>
   
   <div class="search-box">
     <input type="text" id="searchInput" placeholder="닉네임 또는 무장 입력" onkeyup="if(event.key==='Enter') filterAndRender()">
@@ -86,7 +100,7 @@
       <span id="topTroopRank" class="stats-content">-</span>
     </div>
     <div class="stats-row">
-      <span class="stats-title">🎯 '문추' 동행 조합 통계:</span>
+      <span class="stats-title">🎯 동행 무장 조합 통계:</span>
       <span id="munchuStats" class="stats-content">-</span>
     </div>
   </div>
@@ -232,7 +246,7 @@
     if (!officerName) {
       return `
         <div class="officer-box">
-          <div class="officer-top"><span class="officer-name" style="color:#adb5bd;">빈 슬롯</span></div>
+          <div class="officer-top"><span class="officer-name" style="color:#cbd5e1;">빈 슬롯</span></div>
         </div>
       `;
     }
@@ -244,7 +258,6 @@
     const isTroopMatch = (officerTroop === expectedTroop);
     const troopClass = isTroopMatch ? 'troop-match' : 'troop-default';
 
-    // ★ 정석 전법 및 순서 일치 판독 함수 호출
     const isSkillAndOrderMatch = checkOfficerSkillMatch(officerName, t1, t2, t3);
     const skillBadgeClass = isSkillAndOrderMatch ? 'skill-match' : 'skill-mismatch';
     const skillBadgeText = isSkillAndOrderMatch ? '전법·순서 [일치]' : '전법·순서 [불일치]';
@@ -267,7 +280,6 @@
     `;
   }
 
-  // ★ 장수별 정석 전법/순서 판독 로직
   function checkOfficerSkillMatch(officerName, t1, t2, t3) {
     if (!officerName) return false;
     const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
@@ -288,13 +300,11 @@
     return false;
   }
 
-  // XSS 및 따옴표 깨짐 방지용 헬퍼
   function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
 
-  // 통계 계산 함수
   function calculateStats(list) {
     const troopCounts = {};
     const munchuPartners = {};
