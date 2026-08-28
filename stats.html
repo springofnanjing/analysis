@@ -12,10 +12,6 @@
       --text-main: #1e293b;
       --text-sub: #64748b;
       --primary: #3b82f6;
-      --accent-red: #ef4444;
-      --accent-orange: #f59e0b;
-      --badge-match: #10b981;    /* 고급스러운 에메랄드 그린 */
-      --badge-mismatch: #94a3b8; /* 차분한 슬레이트 그레이 */
     }
 
     body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: var(--bg-color); margin: 0; padding: 8px; color: var(--text-main); }
@@ -29,15 +25,15 @@
     button { padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
     button:hover { background: #2563eb; }
     
-    /* 통계 요약 바 영역 (고급스러운 카드 형태) */
+    /* 통계 요약 바 영역 */
     .stats-summary-bar { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px; color: var(--text-sub); display: flex; flex-direction: column; gap: 6px; }
     .stats-row { display: flex; justify-content: space-between; align-items: center; }
     .stats-title { font-weight: 600; color: #334155; }
     .stats-content { color: #2563eb; font-weight: 600; }
 
     /* 부대 카드 기본 및 정석 강조 테두리 */
-    .record-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: transform 0.1s; }
-    .standard-border { border: 2px solid #fda4af; background-color: #fff1f2; } /* 은은하고 고급스러운 위험 감지 핑크/레드 톤 */
+    .record-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .standard-border { border: 2px solid #fda4af; background-color: #fff1f2; }
     
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f8fafc; padding-bottom: 6px; }
     
@@ -47,12 +43,10 @@
 
     .header-right { display: flex; align-items: center; gap: 6px; }
     
-    /* 진형 뱃지 스타일 */
     .formation-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-    .formation-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } /* 세련된 오렌지 파스텔 */
+    .formation-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
     .formation-default { background: #f1f5f9; color: var(--text-sub); }
     
-    /* 펼치기/접기 버튼 스타일 */
     .toggle-btn { background: #f8fafc; color: var(--text-sub); border: 1px solid var(--border-color); padding: 3px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; }
     .toggle-btn:hover { background: #f1f5f9; }
 
@@ -64,15 +58,19 @@
     .officer-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .officer-name { font-weight: 700; font-size: 12px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    /* 병종 뱃지 스타일 */
     .troop-badge { font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: 600; }
     .troop-match { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; } 
     .troop-default { background: #e2e8f0; color: #475569; }
 
-    /* 전법 및 순서 일치 서브 뱃지 스타일 (고급스럽게 수정) */
-    .skill-status-badge { display: block; font-size: 9px; padding: 3px 4px; border-radius: 4px; font-weight: 600; text-align: center; margin-top: 4px; letter-spacing: -0.2px; }
-    .skill-match { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }   /* 고급 에메랄드 그린 톤 */
-    .skill-mismatch { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; } /* 차분한 그레이 톤 */
+    /* ★ 직관적인 전법/순서 뱃지 스타일 */
+    .status-badge { display: block; font-size: 9.5px; padding: 3px 2px; border-radius: 4px; font-weight: 600; text-align: center; margin-top: 4px; letter-spacing: -0.4px; }
+    
+    /* 1. 전법[일치] 순서[일치] (초록) */
+    .status-both-match { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    /* 2. 전법[일치] 순서[불일치] (오렌지) */
+    .status-partial-match { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    /* 3. 전법[불일치] 순서[불일치] (그레이) */
+    .status-none-match { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
     
     /* 세부 전법 영역 */
     .skill-section { display: none; margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 6px; }
@@ -148,7 +146,6 @@
     const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
     const resultArea = document.getElementById('resultArea');
 
-    // 1. 유저별 최신 기록 추출
     const latestMap = {};
     dataList.forEach(r => {
       const name = r.enemy_name || "이름 없음";
@@ -156,10 +153,8 @@
     });
     const latestList = Object.values(latestMap);
 
-    // 2. 통계 정보 계산
     calculateStats(latestList);
 
-    // 3. 검색어 필터링
     const filtered = latestList.filter(row => {
       if (!keyword) return true;
 
@@ -181,21 +176,18 @@
       return;
     }
 
-    resultArea.innerHTML = ""; // 기존 내용 초기화
+    resultArea.innerHTML = "";
 
     filtered.forEach((r, idx) => {
       const troopSummary = getShortTroop(r.h1_troop) + getShortTroop(r.h2_troop) + getShortTroop(r.h3_troop);
       
-      // 정석 3인방 조합 체크 (문추, 진궁, 화타)
       const heroes = [r.h1_name, r.h2_name, r.h3_name];
       const isStandardHeroSet = heroes.includes('문추') && heroes.includes('진궁') && heroes.includes('화타');
       const cardBorderClass = isStandardHeroSet ? 'standard-border' : '';
 
-      // 진형 체크 (안형진 여부)
       const isAnHyeongJin = (r.formation === '안형진');
       const formationClass = isAnHyeongJin ? 'formation-match' : 'formation-default';
 
-      // 카드 엘리먼트 생성
       const cardDiv = document.createElement('div');
       cardDiv.className = `record-card ${cardBorderClass}`;
 
@@ -220,7 +212,6 @@
       cardDiv.innerHTML = cardHtml;
       resultArea.appendChild(cardDiv);
 
-      // 토글 버튼 이벤트 안전하게 바인딩
       const toggleBtn = document.getElementById(`toggle-btn-${idx}`);
       const s1 = document.getElementById(`skills-${idx}-1`);
       const s2 = document.getElementById(`skills-${idx}-2`);
@@ -258,9 +249,8 @@
     const isTroopMatch = (officerTroop === expectedTroop);
     const troopClass = isTroopMatch ? 'troop-match' : 'troop-default';
 
-    const isSkillAndOrderMatch = checkOfficerSkillMatch(officerName, t1, t2, t3);
-    const skillBadgeClass = isSkillAndOrderMatch ? 'skill-match' : 'skill-mismatch';
-    const skillBadgeText = isSkillAndOrderMatch ? '전법·순서 [일치]' : '전법·순서 [불일치]';
+    // ★ 전법/순서 매칭 결과 텍스트 및 클래스 가져오기
+    const statusInfo = getMatchStatus(officerName, t1, t2, t3);
 
     return `
       <div class="officer-box">
@@ -268,7 +258,9 @@
           <span class="officer-name">${escapeHtml(officerName)}</span>
           <span class="troop-badge ${troopClass}">${escapeHtml(officerTroop || '-')}</span>
         </div>
-        <span class="skill-status-badge ${skillBadgeClass}">${skillBadgeText}</span>
+        
+        <span class="status-badge ${statusInfo.cssClass}">${statusInfo.text}</span>
+
         <div id="${subCardId}" class="skill-section">
           <ul class="skill-list">
             <li>${t1 ? escapeHtml(t1) : '<span class="empty-skill">-</span>'}</li>
@@ -280,24 +272,47 @@
     `;
   }
 
-  function checkOfficerSkillMatch(officerName, t1, t2, t3) {
-    if (!officerName) return false;
+  // ★ 전법 & 순서 명확한 텍스트 리턴 함수
+  function getMatchStatus(officerName, t1, t2, t3) {
+    if (!officerName) {
+      return { text: "전법[불일치] 순서[불일치]", cssClass: "status-none-match" };
+    }
+    
     const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
+    const cT2 = clean(t2);
+    const cT3 = clean(t3);
 
-    const cleanT2 = clean(t2);
-    const cleanT3 = clean(t3);
+    let targetSkill2 = "";
+    let targetSkill3 = "";
 
     if (officerName === '문추') {
-      return cleanT2.includes("철기병돌격") && cleanT3.includes("신속전개");
-    } 
-    else if (officerName === '화타') {
-      return cleanT2.includes("결사의다짐") && cleanT3.includes("정의의희생");
-    } 
-    else if (officerName === '진궁') {
-      return cleanT2.includes("허점공략") && cleanT3.includes("강철의의지");
+      targetSkill2 = "철기병돌격";
+      targetSkill3 = "신속전개";
+    } else if (officerName === '화타') {
+      targetSkill2 = "결사의다짐";
+      targetSkill3 = "정의의희생";
+    } else if (officerName === '진궁') {
+      targetSkill2 = "허점공략";
+      targetSkill3 = "강철의의지";
+    } else {
+      return { text: "전법[불일치] 순서[불일치]", cssClass: "status-none-match" };
     }
 
-    return false;
+    // 전법 포함 여부 (순서 무관 두 전법을 모두 들었는가)
+    const hasSkill2 = (cT2.includes(targetSkill2) || cT3.includes(targetSkill2));
+    const hasSkill3 = (cT2.includes(targetSkill3) || cT3.includes(targetSkill3));
+    const isSkillMatch = hasSkill2 && hasSkill3;
+
+    // 순서 정확성 (2, 3번 위치에 제자리에 잘 들어왔는가)
+    const isOrderMatch = cT2.includes(targetSkill2) && cT3.includes(targetSkill3);
+
+    if (isSkillMatch && isOrderMatch) {
+      return { text: "전법[일치] 순서[일치]", cssClass: "status-both-match" };     // 초록
+    } else if (isSkillMatch && !isOrderMatch) {
+      return { text: "전법[일치] 순서[불일치]", cssClass: "status-partial-match" }; // 오렌지
+    } else {
+      return { text: "전법[불일치] 순서[불일치]", cssClass: "status-none-match" };   // 회색
+    }
   }
 
   function escapeHtml(str) {
@@ -350,7 +365,7 @@
     document.getElementById('statsSummaryBar').style.display = "flex";
   }
 
-  function filterAndReader() {
+  function filterAndRender() {
     renderData(rawData);
   }
 </script>
