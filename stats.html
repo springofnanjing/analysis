@@ -10,11 +10,17 @@
     h2 { margin: 0 0 8px 0; color: #2c3e50; border-bottom: 2px solid #eaeaea; padding-bottom: 6px; font-size: 16px; }
     
     /* 검색창 영역 */
-    .search-box { margin-bottom: 10px; display: flex; gap: 6px; }
+    .search-box { margin-bottom: 8px; display: flex; gap: 6px; }
     input[type="text"] { flex: 1; padding: 7px 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; outline: none; }
     input[type="text"]:focus { border-color: #007bff; }
     button { padding: 7px 14px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; }
     
+    /* 통계 요약 패널 추가 */
+    .stats-summary-bar { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; color: #495057; display: flex; flex-direction: column; gap: 4px; }
+    .stats-row { display: flex; justify-content: space-between; align-items: center; }
+    .stats-title { font-weight: bold; color: #343a40; }
+    .stats-content { color: #007bff; font-weight: bold; }
+
     /* 부대 카드 컴팩트 뷰 */
     .record-card { background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
     
@@ -40,7 +46,7 @@
     .officer-name { font-weight: bold; font-size: 12px; color: #212529; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .troop-badge { background: #e2e8f0; color: #4a5568; font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
     
-    /* 세부 전법 영역 (기본은 숨김) */
+    /* 세부 전법 영역 */
     .skill-section { display: none; margin-top: 5px; border-top: 1px dashed #dee2e6; padding-top: 5px; }
     .skill-list { font-size: 11px; color: #495057; margin: 0; padding-left: 12px; line-height: 1.3; }
     .skill-list li { margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -57,6 +63,18 @@
   <div class="search-box">
     <input type="text" id="searchInput" placeholder="닉네임 또는 무장 입력" onkeyup="if(event.key==='Enter') filterAndRender()">
     <button onclick="filterAndRender()">검색</button>
+  </div>
+
+  <!-- 통계 요약 바 영역 -->
+  <div id="statsSummaryBar" class="stats-summary-bar" style="display:none;">
+    <div class="stats-row">
+      <span class="stats-title">📊 인기 병종 조합 랭킹:</span>
+      <span id="topTroopRank" class="stats-content">-</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-title">🎯 '문추' 동행 조합 통계:</span>
+      <span id="munchuStats" class="stats-content">-</span>
+    </div>
   </div>
 
   <div id="resultArea" class="loading">구글 시트에서 데이터를 불러오는 중...</div>
@@ -102,18 +120,18 @@
     const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
     const resultArea = document.getElementById('resultArea');
 
-    // 1. 유저별로 '가장 마지막(최신) 기록'만 남기는 작업 (Latest Record per User)
+    // 1. 유저별 최신 기록 추출
     const latestMap = {};
-    // dataList는 보통 시간 순서대로 쌓여있으므로 순서대로 돌면서 덮어씌우면 마지막 게 남음
     dataList.forEach(r => {
       const name = r.enemy_name || "이름 없음";
       latestMap[name] = r; 
     });
-
-    // 맵에 있는 최신 기록들만 배열로 변환
     const latestList = Object.values(latestMap);
 
-    // 2. 검색어 필터링 (최신 덱들 중에서 검색)
+    // 2. 통계 정보 계산 (최신 덱 전체 기준)
+    calculateStats(latestList);
+
+    // 3. 검색어 필터링
     const filtered = latestList.filter(row => {
       if (!keyword) return true;
 
@@ -212,6 +230,57 @@
     resultArea.innerHTML = html;
   }
 
+  // 통계 계산 함수
+  function calculateStats(list) {
+    const troopCounts = {};
+    const munchuPartners = {};
+    let munchuTotal = 0;
+
+    list.forEach(r => {
+      // 1. 병종 조합 카운트
+      const tSum = getShortTroop(r.h1_troop) + getShortTroop(r.h2_troop) + getShortTroop(r.h3_troop);
+      troopCounts[tSum] = (troopCounts[tSum] || 0) + 1;
+
+      // 2. 문추 포함 여부 확인 및 동행 장수 카운트
+      const officers = [
+        { name: r.h1_name, troop: r.h1_troop },
+        { name: r.h2_name, troop: r.h2_troop },
+        { name: r.h3_name, troop: r.h3_troop }
+      ];
+
+      const hasMunchu = officers.some(o => o.name && o.name.includes("문추"));
+      if (hasMunchu) {
+        munchuTotal++;
+        officers.forEach(o => {
+          if (o.name && !o.name.includes("문추")) {
+            munchuPartners[o.name] = (munchuPartners[o.name] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // 병종 조합 랭킹 정렬 (상위 2개)
+    const sortedTroops = Object.entries(troopCounts).sort((a, b) => b[1] - a[1]);
+    let troopText = sortedTroops.slice(0, 2).map(([combo, cnt]) => `[${combo}] ${cnt}명`).join(" / ");
+    if (!troopText) troopText = "데이터 없음";
+
+    // 문추 파트너 정렬 (상위 2명)
+    const sortedPartners = Object.entries(munchuPartners).sort((a, b) => b[1] - a[1]);
+    let munchuText = sortedPartners.slice(0, 2).map(([name, cnt]) => `${name} (${cnt}회)`).join(", ");
+    if (munchuTotal === 0) {
+      munchuText = "등록된 덱 없음";
+    } else if (!munchuText) {
+      munchuText = `총 ${munchuTotal개}덱 (단독/기타)`;
+    } else {
+      munchuText = `총 ${munchuTotal}덱 / 자주 동행: ${munchuText}`;
+    }
+
+    // 화면에 반영
+    document.getElementById('topTroopRank').innerText = troopText;
+    document.getElementById('munchuStats').innerText = munchuText;
+    document.getElementById('statsSummaryBar').style.display = "flex";
+  }
+
   function toggleSkills(baseId, btnEl) {
     const s1 = document.getElementById(baseId + "-1");
     const s2 = document.getElementById(baseId + "-2");
@@ -230,7 +299,7 @@
     }
   }
 
-  function filterAndRender() {
+  function filterAndReader() {
     renderData(rawData);
   }
 </script>
