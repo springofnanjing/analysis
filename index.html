@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전투 리포트 OCR & 시트 전송</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 15px; line-height: 1.5; max-width: 600px; margin: 0 auto; box-sizing: border-box; background: #f8f9fa; }
+    * { box-sizing: border-box; }
+    .box { border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fff; }
+    #log { background: #f4f4f4; padding: 10px; margin-top: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; font-size: 13px; max-height: 150px; overflow-y: auto; }
+    button { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; }
+    .debug-container { margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px; }
+    .debug-title { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+    .debug-canvas-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .debug-item { text-align: center; font-size: 11px; }
+    
+    .debug-item canvas { 
+      width: 50px; 
+      height: auto; 
+      border: 1px solid #007bff; 
+      background: #eee; 
+      display: block; 
+      margin-bottom: 2px; 
+    }
+    
+    .edit-form-container { display: none; margin-top: 20px; border: 2px solid #007bff; padding: 15px; border-radius: 8px; background: #f9fbff; }
+    .edit-group { margin-bottom: 15px; border: 1px solid #e1e8ed; padding: 10px; border-radius: 6px; background: #fff; }
+    
+    .edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; width: 100%; }
+    .edit-row:last-child { margin-bottom: 0; }
+    
+    .edit-row label { 
+      width: 75px; 
+      font-weight: bold; 
+      font-size: 13px; 
+      flex-shrink: 0; 
+      color: #333; 
+      text-align: right;
+    }
+    
+    .edit-row input, .edit-row select { 
+      flex: 1; 
+      width: 100%; 
+      padding: 8px; 
+      font-size: 14px; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      min-width: 0; 
+      background: #fff;
+    }
+
+    .tactic-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+    .tactic-grid select, .tactic-grid input {
+      width: 100%;
+      padding: 8px;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .section-title { font-weight: bold; margin: 0 0 8px 0; color: #0056b3; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>전투 리포트 자동 분석</h2>
+  <input type="file" id="imageInput" accept="image/*"><br><br>
+  <button id="processBtn" onclick="processReport()" style="background: #007bff; color: white; width: 100%;">1. 이미지 분석 및 결과 확인</button>
+
+  <div id="log">이미지를 선택 후 분석 버튼을 누르세요.</div>
+
+  <div class="debug-container">
+    <div class="debug-title">🔍 OCR 및 크롭 영역 확인</div>
+    <div id="debugList" class="debug-canvas-list"></div>
+  </div>
+</div>
+
+<!-- 분석 후 사용자가 직접 확인 및 수정할 수 있는 영역 -->
+<div id="editFormArea" class="edit-form-container">
+  <h3>✏️ 추출 결과 확인 및 수정</h3>
+  <p style="font-size: 12px; color: #555; margin-bottom: 12px;">결과를 확인하고 잘못된 항목을 직접 수정한 뒤 전송하세요.</p>
+
+  <div class="edit-group">
+    <div class="edit-row">
+      <label>상대 닉네임</label>
+      <input type="text" id="edit_enemy_name">
+    </div>
+    <div class="edit-row">
+      <label>진형</label>
+      <input type="text" id="edit_formation">
+    </div>
+  </div>
+
+  <!-- 장수 1 -->
+  <div class="edit-group">
+    <div class="section-title">장수 1</div>
+    <div class="edit-row">
+      <label>병종</label>
+      <select id="edit_h1_troop">
+        <option value="방패병">방패병</option><option value="중방패병">중방패병</option><option value="검방패병">검방패병</option>
+        <option value="궁병">궁병</option><option value="장궁병">장궁병</option><option value="석궁병">석궁병</option>
+        <option value="창병">창병</option><option value="단창병">단창병</option><option value="장창병">장창병</option>
+        <option value="기병">기병</option><option value="경기병">경기병</option><option value="중기병">중기병</option>
+      </select>
+      <label style="width: 45px;">이름</label>
+      <select id="edit_h1_name" onchange="onHeroChange(1)"></select>
+    </div>
+    <div class="edit-row">
+      <label>전법 3개</label>
+      <div class="tactic-grid">
+        <input type="text" id="edit_h1_t1" placeholder="고유전법 (자동입력)" readonly style="background-color: #e9ecef;">
+        <select id="edit_h1_t2"></select>
+        <select id="edit_h1_t3"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 장수 2 -->
+  <div class="edit-group">
+    <div class="section-title">장수 2</div>
+    <div class="edit-row">
+      <label>병종</label>
+      <select id="edit_h2_troop">
+        <option value="방패병">방패병</option><option value="중방패병">중방패병</option><option value="검방패병">검방패병</option>
+        <option value="궁병">궁병</option><option value="장궁병">장궁병</option><option value="석궁병">석궁병</option>
+        <option value="창병">창병</option><option value="단창병">단창병</option><option value="장창병">장창병</option>
+        <option value="기병">기병</option><option value="경기병">경기병</option><option value="중기병">중기병</option>
+      </select>
+      <label style="width: 45px;">이름</label>
+      <select id="edit_h2_name" onchange="onHeroChange(2)"></select>
+    </div>
+    <div class="edit-row">
+      <label>전법 3개</label>
+      <div class="tactic-grid">
+        <input type="text" id="edit_h2_t1" placeholder="고유전법 (자동입력)" readonly style="background-color: #e9ecef;">
+        <select id="edit_h2_t2"></select>
+        <select id="edit_h2_t3"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 장수 3 -->
+  <div class="edit-group">
+    <div class="section-title">장수 3</div>
+    <div class="edit-row">
+      <label>병종</label>
+      <select id="edit_h3_troop">
+        <option value="방패병">방패병</option><option value="중방패병">중방패병</option><option value="검방패병">검방패병</option>
+        <option value="궁병">궁병</option><option value="장궁병">장궁병</option><option value="석궁병">석궁병</option>
+        <option value="창병">창병</option><option value="단창병">단창병</option><option value="장창병">장창병</option>
+        <option value="기병">기병</option><option value="경기병">경기병</option><option value="중기병">중기병</option>
+      </select>
+      <label style="width: 45px;">이름</label>
+      <select id="edit_h3_name" onchange="onHeroChange(3)"></select>
+    </div>
+    <div class="edit-row">
+      <label>전법 3개</label>
+      <div class="tactic-grid">
+        <input type="text" id="edit_h3_t1" placeholder="고유전법 (자동입력)" readonly style="background-color: #e9ecef;">
+        <select id="edit_h3_t2"></select>
+        <select id="edit_h3_t3"></select>
+      </div>
+    </div>
+  </div>
+
+  <br>
+  <button id="sendBtn" onclick="sendToSheet()" style="background: #28a745; color: white; width: 100%;">2. 구글 시트에 최종 저장</button>
+</div>
+
+<script>
+const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwgUj9R7LuSatjT_jBZ3j-n-28KSNgJFRlFiU1suYeaAOYVsar1LUjM7QNAS0rbjVvw/exec";
+
+const HERO_LIST = [
+  "가후", "견희", "곽가", "등애", "사마의", "서황", "순욱", "악진", "우금", "장료", 
+  "장합", "전위", "정욱", "조인", "조조", "하후돈", "하후연", "허저",
+  "감부인", "관우", "관평", "마운록", "마초", "방통", "법정", "서서", "유비", 
+  "장비", "제갈량", "조운", "주창", "황월영", "황충",
+  "감녕", "노숙", "대교", "서성", "소교", "손견", "손권", "손상향", "손책", "여몽", 
+  "육손", "정보", "주유", "주태", "태사자", "황개",
+  "공손찬", "동탁", "문추", "방덕", "안량", "여포", "원소", "이유", "장각", "장량", 
+  "장보", "전풍", "진궁", "채문희", "초선", "추씨", "화웅", "화타"
+];
+
+const UNIQUE_TACTICS = {
+  "조조": "난세의 간웅", "가후": "현묘한 계책", "사마의": "매의 응시", "장비": "만인지적", "방통": "연환계",
+  "관우": "화하 진압", "손권": "강동 호거", "소교": "천향", "주유": "기지의 승리", "조운": "칠진칠출",
+  "견희": "바람과 눈꽃", "초선": "폐월", "황월영": "목우유마", "대교": "국색", "법정": "간파력",
+  "전위": "고대의 악래", "우금": "침착한 지휘", "장합": "적진 돌파", "등애": "둔전령", "서황": "승승장구",
+  "정욱": "용맹의 화신", "황충": "전장 평정", "관평": "청룡 출격", "주창": "충성과 용맹", "손책": "강동 제패",
+  "손상향": "궁희", "여몽": "백의도강", "태사자": "완벽한 사격", "황개": "고육지계", "손견": "무열황제",
+  "서성": "백리의성", "채문희": "비분시", "이유": "군주 시해", "화웅": "장군의 무용", "안량": "남다른 완력",
+  "문추": "치열한 교전", "추씨": "눈부신 자태", "장량": "괴술", "허저": "백병 혈전", "곽가": "주도면밀",
+  "순욱": "인재 등용", "악진": "선봉 정신", "하후연": "신속기습", "하후돈": "강렬", "조인": "양번 사수",
+  "유비": "백성과 함께", "제갈량": "초선차전", "서서": "겸손한 자세", "마운록": "치명적 미모", "마초": "기병 돌격",
+  "감부인": "황심의 가호", "노숙": "형주 분할", "감녕": "수전의 제왕", "육손": "화소연영", "정보": "흥왕의 위업",
+  "주태": "불굴의 의지", "여포": "무쌍의 용사", "장료": "바람 방랑자", "원소": "군웅 집결", "장각": "황천의 시대",
+  "진궁": "지략전", "전풍": "지략 방어", "화타": "마비산", "공손찬": "국경의 장수", "방덕": "필사의 돌격",
+  "동탁": "압도적 권력", "장보": "도술의 귀재"
+};
+
+const TACTIC_LIST = [
+  "강철의 의지", "견고한 방어", "결사의 다짐", "경무장", "고요한 제압", "광풍의 분노", "구름과 바람", 
+  "금성의 철벽", "기문둔갑", "기민한 전술", "기습 제압", "난공불락", "도광양회", "맹렬한 화염", 
+  "무방비 공격", "문무겸비", "방화범", "백전불태", "병력 강화", "보급 차단", "삼군 압도", "세금 과징수", 
+  "신속전개", "압도적 승리", "연전연승", "예리한 통찰", "예리한 판단", "예측의 신", "요새 함락", "용맹한 삼군", 
+  "원문사극", "음과 양", "인재 기용", "일심협력", "일인천군", "재해 이용", "적재적소", "전략 계획", 
+  "전력 지원", "정의의 희생", "준비 완료", "찬란한 위명", "창고 기습", "천군 소탕", "천리기습", "천하평론", 
+  "철기병 돌격", "청낭 치료", "청천벽력", "청풍 질주", "최상의 지략", "출기불의", "충신의 기재", "칠군수몰",
+  "퇴로 매복", "틈새 공략", "파죽지세", "팔방전", "포위 돌파", "허실 간파", "허점 공격", "화공전술",
+  "강습", "결정적인 수", "기풍당당", "넘치는 계책", "늠름한 자태", "독설가", "문과 무", "민중 봉기", 
+  "비상한 전략", "속수무책", "수중전", "순간 돌습", "신의 가호", "야습", "양책 수립", "위기의 결전", 
+  "유현정책", "응전", "적군 굴복", "적진 교란", "전장의 노래", "전쟁 조달", "전쟁 종식", "지혜의 바람", 
+  "청야 전술", "측면 공격", "투혼의 추격", "패잔병 척결", "평화의 기운", "허점 공략", "화검"
+];
+
+function initSelects() {
+  ['edit_h1_name', 'edit_h2_name', 'edit_h3_name'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">-- 장수 선택 --</option>';
+    HERO_LIST.forEach(hero => {
+      const opt = document.createElement('option');
+      opt.value = hero;
+      opt.innerText = hero;
+      sel.appendChild(opt);
+    });
+  });
+
+  ['h1', 'h2', 'h3'].forEach(h => {
+    ['t2', 't3'].forEach(t => {
+      const sel = document.getElementById(`edit_${h}_${t}`);
+      sel.innerHTML = '<option value="">-- 전법 선택 --</option>';
+      TACTIC_LIST.forEach(tactic => {
+        const opt = document.createElement('option');
+        opt.value = tactic;
+        opt.innerText = tactic;
+        sel.appendChild(opt);
+      });
+    });
+  });
+}
+window.onload = initSelects;
+
+function onHeroChange(heroNum) {
+  const heroName = document.getElementById(`edit_h${heroNum}_name`).value;
+  const t1Input = document.getElementById(`edit_h${heroNum}_t1`);
+  t1Input.value = UNIQUE_TACTICS[heroName] || "";
+}
+
+const CROP_BOXES = {
+  formation:  { x: 105,  y: 1410, w: 140, h: 70 },
+  nickname:   { x: 780,  y: 1430, w: 350, h: 45 },
+
+  h1_troop:   { x: 80,   y: 1578, w: 56,  h: 56 }, 
+  h1_name:    { x: 175,  y: 1750, w: 145, h: 40 }, 
+  h1_t2:      { x: 70,   y: 1985, w: 200, h: 45 },
+  h1_t3:      { x: 70,   y: 2095, w: 200, h: 45 },
+
+  h2_troop:   { x: 458,  y: 1578, w: 56,  h: 56 },
+  h2_name:    { x: 545,  y: 1750, w: 145, h: 40 },
+  h2_t2:      { x: 440,  y: 1985, w: 200, h: 45 },
+  h2_t3:      { x: 440,  y: 2095, w: 200, h: 45 },
+
+  h3_troop:   { x: 830,  y: 1578, w: 56,  h: 56 },
+  h3_name:    { x: 915,  y: 1750, w: 145, h: 40 },
+  h3_t2:      { x: 810,  y: 1985, w: 200, h: 45 },
+  h3_t3:      { x: 810,  y: 2095, w: 200, h: 45 }
+};
+
+function log(msg) {
+  const logDiv = document.getElementById('log');
+  logDiv.innerText += "\n" + msg;
+  logDiv.scrollTop = logDiv.scrollHeight;
+  console.log(msg);
+}
+
+function preprocessForOCR(img, box, keyName) {
+  const scale = 3; 
+  const canvas = document.createElement('canvas');
+  canvas.width = box.w * scale;
+  canvas.height = box.h * scale;
+  
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, canvas.width, canvas.height);
+
+  const debugList = document.getElementById('debugList');
+  if (debugList) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'debug-item';
+    wrapper.appendChild(canvas);
+    const label = document.createElement('div');
+    label.innerText = keyName;
+    wrapper.appendChild(label);
+    debugList.appendChild(wrapper);
+  }
+  return canvas;
+}
+
+const TROOP_TEMPLATES = {
+  '방패병':   'assets/shield.png',
+  '중방패병': 'assets/shield_heavy.png',
+  '검방패병': 'assets/shield_sword.png',
+  '궁병':     'assets/archer.png',
+  '장궁병':   'assets/archer_long.png',
+  '석궁병':   'assets/crossbow.png',
+  '창병':     'assets/spear.png',
+  '단창병':   'assets/spear_short.png',
+  '장창병':   'assets/spear_long.png',
+  '기병':     'assets/cavalry.png',
+  '경기병':   'assets/cavalry_light.png',
+  '중기병':   'assets/cavalry_heavy.png'
+};
+
+const loadedTemplates = {};
+
+async function loadTroopTemplates() {
+  const promises = Object.entries(TROOP_TEMPLATES).map(([name, url]) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = url;
+      const timer = setTimeout(() => resolve(), 1500);
+
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const cvs = document.createElement('canvas');
+          cvs.width = 40; cvs.height = 40;
+          const ctx = cvs.getContext('2d');
+          ctx.drawImage(img, 0, 0, 40, 40);
+          const imgData = ctx.getImageData(0, 0, 40, 40);
+          const d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const gray = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+            const v = gray > 110 ? 255 : 0;
+            d[i] = v; d[i+1] = v; d[i+2] = v;
+          }
+          loadedTemplates[name] = d;
+        } catch (e) {}
+        resolve();
+      };
+      img.onerror = () => { clearTimeout(timer); resolve(); };
+    });
+  });
+  await Promise.all(promises);
+}
+
+function matchTroopType(croppedCanvas) {
+  try {
+    if (!loadedTemplates || Object.keys(loadedTemplates).length === 0) return "미상";
+    const cvs40 = document.createElement('canvas');
+    cvs40.width = 40; cvs40.height = 40;
+    const ctx40 = cvs40.getContext('2d');
+    ctx40.drawImage(croppedCanvas, 0, 0, 40, 40);
+    const imgData = ctx40.getImageData(0, 0, 40, 40);
+    const targetData = imgData.data;
+
+    for (let i = 0; i < targetData.length; i += 4) {
+      const gray = targetData[i]*0.299 + targetData[i+1]*0.587 + targetData[i+2]*0.114;
+      const v = gray > 110 ? 255 : 0;
+      targetData[i] = v; targetData[i+1] = v; targetData[i+2] = v;
+    }
+
+    let bestMatch = "미상";
+    let minDiff = Infinity;
+
+    for (const [name, templateData] of Object.entries(loadedTemplates)) {
+      let diff = 0;
+      for (let i = 0; i < targetData.length; i += 4) {
+        diff += Math.abs(targetData[i] - templateData[i]);
+      }
+      if (diff < minDiff) { minDiff = diff; bestMatch = name; }
+    }
+    return bestMatch;
+  } catch (err) {
+    return "미상";
+  }
+}
+
+function parseHeroName(text) {
+  const clean = text.replace(/[^가-힣]/g, '');
+  const match = clean.match(/[가-힣]{2,3}/);
+  const parsed = match ? match[0] : clean;
+  return HERO_LIST.includes(parsed) ? parsed : "";
+}
+
+function parseTacticName(text) {
+  const cleanTarget = text.replace(/[^가-힣a-zA-Z0-9]/g, '');
+  if (!cleanTarget) return "";
+
+  for (const tactic of TACTIC_LIST) {
+    const cleanCandidate = tactic.replace(/[^가-힣a-zA-Z0-9]/g, '');
+    if (cleanCandidate === cleanTarget || cleanCandidate.includes(cleanTarget) || cleanTarget.includes(cleanCandidate)) {
+      return tactic;
+    }
+  }
+  return "";
+}
+
+async function processReport() {
+  const fileInput = document.getElementById('imageInput');
+  const btn = document.getElementById('processBtn');
+  const debugList = document.getElementById('debugList');
+  const editFormArea = document.getElementById('editFormArea');
+
+  if (!fileInput.files[0]) {
+    alert("이미지 파일을 선택해주세요.");
+    return;
+  }
+
+  btn.disabled = true;
+  document.getElementById('log').innerText = "분석 시작...";
+  if (debugList) debugList.innerHTML = "";
+  editFormArea.style.display = "none";
+
+  const file = fileInput.files[0];
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+
+  img.onload = async () => {
+    log("병종 템플릿 로드 중...");
+    await loadTroopTemplates();
+
+    log("Tesseract OCR 엔진 준비 중...");
+    const worker = await Tesseract.createWorker('kor');
+
+    const nickCvs = preprocessForOCR(img, CROP_BOXES.nickname, '닉네임');
+    const formCvs = preprocessForOCR(img, CROP_BOXES.formation, '진형');
+    
+    const resNick = await worker.recognize(nickCvs);
+    const resForm = await worker.recognize(formCvs);
+
+    const enemyName = resNick.data.text.replace(/[^가-힣a-zA-Z0-9]/g, '').trim();
+    const rawFormText = resForm.data.text.replace(/[^가-힣]/g, '').trim();
+    const formMatch = rawFormText.match(/[가-힣]{1,4}진/);
+    const formation = formMatch ? formMatch[0] : rawFormText;
+
+    const h1_troop = matchTroopType(preprocessForOCR(img, CROP_BOXES.h1_troop, '병종1'));
+    const h2_troop = matchTroopType(preprocessForOCR(img, CROP_BOXES.h2_troop, '병종2'));
+    const h3_troop = matchTroopType(preprocessForOCR(img, CROP_BOXES.h3_troop, '병종3'));
+
+    const resH1 = await worker.recognize(preprocessForOCR(img, CROP_BOXES.h1_name, '장수1'));
+    const resH2 = await worker.recognize(preprocessForOCR(img, CROP_BOXES.h2_name, '장수2'));
+    const resH3 = await worker.recognize(preprocessForOCR(img, CROP_BOXES.h3_name, '장수3'));
+
+    const h1_name = parseHeroName(resH1.data.text);
+    const h2_name = parseHeroName(resH2.data.text);
+    const h3_name = parseHeroName(resH3.data.text);
+
+    // 💡 고유전법(t1)은 OCR 대상에서 제외하고, 2, 3번째 전법(t2, t3)만 OCR 분석 진행
+    const tKeys = ['h1_t2', 'h1_t3', 'h2_t2', 'h2_t3', 'h3_t2', 'h3_t3'];
+    const tResults = {};
+
+    for (const key of tKeys) {
+      const tacCvs = preprocessForOCR(img, CROP_BOXES[key], key);
+      const res = await worker.recognize(tacCvs);
+      tResults[key] = parseTacticName(res.data.text);
+    }
+    
+    await worker.terminate();
+
+    document.getElementById('edit_enemy_name').value = enemyName;
+    document.getElementById('edit_formation').value = formation;
+    
+    document.getElementById('edit_h1_troop').value = h1_troop;
+    document.getElementById('edit_h1_name').value = h1_name;
+    document.getElementById('edit_h1_t1').value = UNIQUE_TACTICS[h1_name] || "";
+    document.getElementById('edit_h1_t2').value = tResults['h1_t2'];
+    document.getElementById('edit_h1_t3').value = tResults['h1_t3'];
+
+    document.getElementById('edit_h2_troop').value = h2_troop;
+    document.getElementById('edit_h2_name').value = h2_name;
+    document.getElementById('edit_h2_t1').value = UNIQUE_TACTICS[h2_name] || "";
+    document.getElementById('edit_h2_t2').value = tResults['h2_t2'];
+    document.getElementById('edit_h2_t3').value = tResults['h2_t3'];
+
+    document.getElementById('edit_h3_troop').value = h3_troop;
+    document.getElementById('edit_h3_name').value = h3_name;
+    document.getElementById('edit_h3_t1').value = UNIQUE_TACTICS[h3_name] || "";
+    document.getElementById('edit_h3_t2').value = tResults['h3_t2'];
+    document.getElementById('edit_h3_t3').value = tResults['h3_t3'];
+
+    editFormArea.style.display = "block";
+    log("✨ 분석 완료! 장수 이름 기반 고유전법 자동 반영 완료.");
+    btn.disabled = false;
+  };
+}
+
+async function sendToSheet() {
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+
+  const payload = {
+    enemy_name: document.getElementById('edit_enemy_name').value,
+    formation: document.getElementById('edit_formation').value,
+    
+    h1_troop: document.getElementById('edit_h1_troop').value, 
+    h1_name: document.getElementById('edit_h1_name').value, 
+    h1_t1: document.getElementById('edit_h1_t1').value, 
+    h1_t2: document.getElementById('edit_h1_t2').value, 
+    h1_t3: document.getElementById('edit_h1_t3').value,
+    
+    h2_troop: document.getElementById('edit_h2_troop').value, 
+    h2_name: document.getElementById('edit_h2_name').value, 
+    h2_t1: document.getElementById('edit_h2_t1').value, 
+    h2_t2: document.getElementById('edit_h2_t2').value, 
+    h2_t3: document.getElementById('edit_h2_t3').value,
+    
+    h3_troop: document.getElementById('edit_h3_troop').value, 
+    h3_name: document.getElementById('edit_h3_name').value, 
+    h3_t1: document.getElementById('edit_h3_t1').value, 
+    h3_t2: document.getElementById('edit_h3_t2').value, 
+    h3_t3: document.getElementById('edit_h3_t3').value
+  };
+
+  log("구글 시트로 수정된 데이터 전송 중...");
+
+  try {
+    await fetch(GOOGLE_WEB_APP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ payload: JSON.stringify(payload) })
+    });
+    log("✅ 구글 시트 전송 완료!");
+    alert("시트 전송이 완료되었습니다.");
+  } catch (err) {
+    log("❌ 전송 에러: " + err);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+</script>
+
+</body>
+</html>
