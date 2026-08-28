@@ -41,7 +41,7 @@
     .enemy-name { font-size: 15px; font-weight: 700; color: #0ea5e9; }
     .troop-summary-tag { background: #334155; color: #fff; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
     
-    /* ★ 덱 완성도 점수 뱃지 스타일 */
+    /* 덱 완성도 점수 뱃지 스타일 */
     .score-badge { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; }
     .score-max { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }   /* 10점 만점 */
     .score-high { background: #fef3c7; color: #b45309; border-color: #fde68a; }  /* 7~9점 */
@@ -178,6 +178,9 @@
       return;
     }
 
+    // ★ 핵심 추가: 덱 완성도 점수가 높은 순서대로 카드 정렬 (내림차순)
+    filtered.sort((a, b) => calculateDeckScore(b) - calculateDeckScore(a));
+
     resultArea.innerHTML = "";
 
     filtered.forEach((r, idx) => {
@@ -190,7 +193,6 @@
       const isAnHyeongJin = (r.formation === '안형진');
       const formationClass = isAnHyeongJin ? 'formation-match' : 'formation-default';
 
-      // ★ 덱 완성도 점수 계산 로직 적용
       const totalScore = calculateDeckScore(r);
       let scoreBadgeClass = 'score-low';
       if (totalScore === 10) scoreBadgeClass = 'score-max';
@@ -242,16 +244,14 @@
     });
   }
 
-  // ★ 10점 만점 덱 완성도 계산 함수
+  // 10점 만점 덱 완성도 계산 함수
   function calculateDeckScore(r) {
     let score = 0;
 
-    // 1. 진형 일치 (+1)
     if (r.formation === '안형진') {
       score += 1;
     }
 
-    // 장수 데이터 배열 처리
     const officers = [
       { name: r.h1_name, troop: r.h1_troop, t1: r.h1_t1, t2: r.h1_t2, t3: r.h1_t3 },
       { name: r.h2_name, troop: r.h2_troop, t1: r.h2_t1, t2: r.h2_t2, t3: r.h2_t3 },
@@ -261,7 +261,6 @@
     officers.forEach(o => {
       if (!o.name) return;
 
-      // 2. 병종 일치 (무장당 +1, 최대 +3)
       let expectedTroop = "";
       if (o.name === '문추') expectedTroop = '석궁병';
       if (o.name === '진궁' || o.name === '화타') expectedTroop = '장궁병';
@@ -270,19 +269,17 @@
         score += 1;
       }
 
-      // 3 & 4. 정석·일치(+2) 또는 정석·불일치(+1) 판독
       const matchStatus = getMatchStatusData(o.name, o.t1, o.t2, o.t3);
       if (matchStatus === 'match') {
-        score += 2; // 정석·일치
+        score += 2; 
       } else if (matchStatus === 'mismatch') {
-        score += 1; // 정석·불일치
+        score += 1; 
       }
     });
 
     return score;
   }
 
-  // 내부 판독용 보조 함수
   function getMatchStatusData(officerName, t1, t2, t3) {
     if (!officerName) return 'variant';
     const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
@@ -308,10 +305,10 @@
     const hasSkill2 = (cT2.includes(targetSkill2) || cT3.includes(targetSkill2));
     const hasSkill3 = (cT2.includes(targetSkill3) || cT3.includes(targetSkill3));
     
-    if (!hasSkill2 || !hasSkill3) return 'variant'; // 변칙
+    if (!hasSkill2 || !hasSkill3) return 'variant';
 
     const isOrderMatch = cT2.includes(targetSkill2) && cT3.includes(targetSkill3);
-    return isOrderMatch ? 'match' : 'mismatch'; // 정석·일치 vs 정석·불일치
+    return isOrderMatch ? 'match' : 'mismatch';
   }
 
   function createOfficerBox(officerName, officerTroop, t1, t2, t3, subCardId) {
