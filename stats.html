@@ -58,7 +58,7 @@
     /* 전법 및 순서 일치 서브 뱃지 스타일 */
     .skill-status-badge { display: block; font-size: 9px; padding: 2px 4px; border-radius: 3px; font-weight: bold; text-align: center; margin-top: 4px; }
     .skill-match { background: #4caf50; color: #fff; }   /* 전법·순서 완벽 일치 */
-    .skill-mismatch { background: #9e9e9e; color: #fff; } /* 순서 혹은 전법 불일치 (커스텀) */
+    .skill-mismatch { background: #9e9e9e; color: #fff; } /* 순서 혹은 전법 불일치 */
     
     /* 세부 전법 영역 */
     .skill-section { display: none; margin-top: 5px; border-top: 1px dashed #dee2e6; padding-top: 5px; }
@@ -185,7 +185,6 @@
       const cardDiv = document.createElement('div');
       cardDiv.className = `record-card ${cardBorderClass}`;
 
-      // 헤더 HTML 구성
       let cardHtml = `
         <div class="card-header">
           <div class="header-left">
@@ -245,7 +244,8 @@
     const isTroopMatch = (officerTroop === expectedTroop);
     const troopClass = isTroopMatch ? 'troop-match' : 'troop-default';
 
-    const isSkillAndOrderMatch = false; // 추후 정석 전법 비교 로직 연동
+    // ★ 정석 전법 및 순서 일치 판독 함수 호출
+    const isSkillAndOrderMatch = checkOfficerSkillMatch(officerName, t1, t2, t3);
     const skillBadgeClass = isSkillAndOrderMatch ? 'skill-match' : 'skill-mismatch';
     const skillBadgeText = isSkillAndOrderMatch ? '전법·순서 [일치]' : '전법·순서 [불일치]';
 
@@ -265,6 +265,27 @@
         </div>
       </div>
     `;
+  }
+
+  // ★ 장수별 정석 전법/순서 판독 로직
+  function checkOfficerSkillMatch(officerName, t1, t2, t3) {
+    if (!officerName) return false;
+    const clean = (str) => (str || "").replace(/\s+/g, "").toLowerCase();
+
+    const cleanT2 = clean(t2);
+    const cleanT3 = clean(t3);
+
+    if (officerName === '문추') {
+      return cleanT2.includes("철기병돌격") && cleanT3.includes("신속전개");
+    } 
+    else if (officerName === '화타') {
+      return cleanT2.includes("결사의다짐") && cleanT3.includes("정의의희생");
+    } 
+    else if (officerName === '진궁') {
+      return cleanT2.includes("허점공략") && cleanT3.includes("강철의의지");
+    }
+
+    return false;
   }
 
   // XSS 및 따옴표 깨짐 방지용 헬퍼
