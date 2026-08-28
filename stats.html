@@ -44,8 +44,8 @@
     /* 덱 완성도 점수 뱃지 스타일 */
     .score-badge { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; }
     .score-max { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }   /* 10점 만점 */
-    .score-high { background: #fef3c7; color: #b45309; border-color: #fde68a; }  /* 7~9점 */
-    .score-low { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }   /* 6점 이하 */
+    .score-high { background: #fef3c7; color: #b45309; border-color: #fde68a; }  /* 고득점 */
+    .score-low { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }   /* 낮은 점수 */
 
     .header-right { display: flex; align-items: center; gap: 6px; }
     
@@ -54,7 +54,7 @@
     .formation-default { background: #f1f5f9; color: var(--text-sub); }
     
     .toggle-btn { background: #f8fafc; color: var(--text-sub); border: 1px solid var(--border-color); padding: 3px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; }
-    .toggle-btn:hover { background: #f1f5f9; }
+    .toggle-btn:hover { background: #f8fafc; }
 
     /* 장수 3명 Grid */
     .officer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -178,7 +178,7 @@
       return;
     }
 
-    // ★ 핵심 추가: 덱 완성도 점수가 높은 순서대로 카드 정렬 (내림차순)
+    // 정렬: 0.5(진형) + 2(무장조합) + 3(병종) + 4.5(전법) = 10점 만점 기준 고득점순 정렬
     filtered.sort((a, b) => calculateDeckScore(b) - calculateDeckScore(a));
 
     resultArea.innerHTML = "";
@@ -244,12 +244,21 @@
     });
   }
 
-  // 10점 만점 덱 완성도 계산 함수
+  // ★ 0.5(진형) + 2(정석무장) + 3(병종) + 4.5(전법) = 10점 만점 계산 공식
   function calculateDeckScore(r) {
     let score = 0;
 
+    // 1. 진형 일치 (+0.5점)
     if (r.formation === '안형진') {
-      score += 1;
+      score += 0.5;
+    }
+
+    const heroes = [r.h1_name, r.h2_name, r.h3_name];
+    const isStandardHeroSet = heroes.includes('문추') && heroes.includes('진궁') && heroes.includes('화타');
+    
+    // 2. 정석 무장 조합 (문추·진궁·화타 세트) 일치 시 (+2.0점)
+    if (isStandardHeroSet) {
+      score += 2.0;
     }
 
     const officers = [
@@ -261,19 +270,21 @@
     officers.forEach(o => {
       if (!o.name) return;
 
+      // 3. 병종 일치 (장수당 +1점, 3명 최대 +3점)
       let expectedTroop = "";
       if (o.name === '문추') expectedTroop = '석궁병';
       if (o.name === '진궁' || o.name === '화타') expectedTroop = '장궁병';
       
       if (o.troop === expectedTroop) {
-        score += 1;
+        score += 1.0;
       }
 
+      // 4. 전법 완성도 (정석·일치 장수당 +1.5점, 정석·불일치 장수당 +1점 -> 3명 최대 4.5점)
       const matchStatus = getMatchStatusData(o.name, o.t1, o.t2, o.t3);
       if (matchStatus === 'match') {
-        score += 2; 
+        score += 1.5; // 정석·일치당 +1.5점
       } else if (matchStatus === 'mismatch') {
-        score += 1; 
+        score += 1.0; // 정석·불일치당 +1점
       }
     });
 
